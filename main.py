@@ -8,7 +8,7 @@ app = FastAPI()
 with open('model/event_action.dill', 'rb') as file:
     model = dill.load(file)
 
-
+#Форма для заполнения
 class Form(BaseModel):
     utm_source: str
     utm_medium: str
@@ -26,21 +26,21 @@ class Form(BaseModel):
     visit_number: int
 
 
-
+#Форма ответа
 class Prediction(BaseModel):
     target: int
 
-
+#Посмотреть статус
 @app.get('/status')
 def status():
     return 'Im OK'
 
-
+#Посмотреть версию и доп. информацию
 @app.get('/version')
 def version():
     return model['metadata']
 
-
+#Узнать предикт
 @app.post('/predict', response_model=Prediction)
 def predict(form: Form):
     df = pd.DataFrame.from_dict([form.dict()])
