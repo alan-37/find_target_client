@@ -4,11 +4,12 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score
-from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, FunctionTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer, make_column_selector
+from catboost import CatBoostClassifier
+from xgboost import XGBClassifier
 
 
 #Удаление ненужных колонок
@@ -159,11 +160,25 @@ def main():
         ('numerical', numerical_transformer, numerical_features),
         ('categorical', categorical_transformer, categorical_features),
     ])
+    s = ((y == 0).sum() / (y == 1).sum()) ** 0.5
     #Создание set() с моделями для обучения
     models = (
         LogisticRegression(class_weight='balanced', solver='liblinear', random_state=42),
         RandomForestClassifier(random_state=42),
-        MLPClassifier(random_state=42)
+        CatBoostClassifier(
+            iterations=600,
+            learning_rate=0.2,
+            eval_metric='AUC',
+            random_seed=42,
+            auto_class_weights='SqrtBalanced'
+        ),
+        XGBClassifier(scale_pos_weight=s,
+                      seed=42,
+                      eta=0.2,
+                      n_estimators=600,
+                      early_stopping_rounds=10)
+
+
     )
     #Переменная best_score нужная для сохранения лучшей оценки модели
     best_score = 0
@@ -178,7 +193,7 @@ def main():
             ('classifier', model)
         ])
         #Рассчет оценки модели по методу roc_auc
-        score = cross_val_score(pipe, X, y, cv=4, scoring='roc_auc')
+        score = cross_val_score(pipe, X, y, cv=3, scoring='roc_auc')
         print(f'model: {type(model).__name__}, roc_auc_mean: {score.mean():.4f}, roc_auc_std: {score.std():.4f}')
         #Ищем самое больше значние в score, и сохраняем это значение и этот пайплайн, если значение самое большое
         if score.mean() > best_score:
